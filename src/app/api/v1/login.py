@@ -40,7 +40,7 @@ async def login_for_access_token(
         key="refresh_token", value=refresh_token, httponly=True, secure=True, samesite="Lax", max_age=max_age
     )
 
-    return {"access_token": access_token, "token_type": "bearer"}
+    return {"access_token": access_token, "refresh_token": refresh_token}
 
 
 @router.post("/refresh")

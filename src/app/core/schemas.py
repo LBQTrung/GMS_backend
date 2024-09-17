@@ -12,13 +12,9 @@ class HealthCheck(BaseModel):
 
 
 # -------------- mixins --------------
-class UUIDSchema(BaseModel):
-    uuid: uuid_pkg.UUID = Field(default_factory=uuid_pkg.uuid4)
-
-
-class TimestampSchema(BaseModel):
+class CreatedTimestamp(BaseModel):
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC).replace(tzinfo=None))
-    updated_at: datetime = Field(default=None)
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC).replace(tzinfo=None))
 
     @field_serializer("created_at")
     def serialize_dt(self, created_at: datetime | None, _info: Any) -> str | None:
@@ -35,7 +31,18 @@ class TimestampSchema(BaseModel):
         return None
 
 
-class PersistentDeletion(BaseModel):
+class UpdatedTimestamp(BaseModel):
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC).replace(tzinfo=None))
+
+    @field_serializer("updated_at")
+    def serialize_updated_at(self, updated_at: datetime | None, _info: Any) -> str | None:
+        if updated_at is not None:
+            return updated_at.isoformat()
+
+        return None
+
+
+class DeletedTimestamp(BaseModel):
     deleted_at: datetime | None = Field(default=None)
     is_deleted: bool = False
 
@@ -46,11 +53,10 @@ class PersistentDeletion(BaseModel):
 
         return None
 
-
 # -------------- token --------------
 class Token(BaseModel):
     access_token: str
-    token_type: str
+    refresh_token: str
 
 
 class TokenData(BaseModel):

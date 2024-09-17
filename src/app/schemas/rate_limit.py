@@ -3,7 +3,7 @@ from typing import Annotated
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from ..core.schemas import TimestampSchema
+from ..core.schemas import CreatedTimestamp
 
 
 def sanitize_path(path: str) -> str:
@@ -20,7 +20,7 @@ class RateLimitBase(BaseModel):
         return sanitize_path(v)
 
 
-class RateLimit(TimestampSchema, RateLimitBase):
+class RateLimit(CreatedTimestamp, RateLimitBase):
     tier_id: int
     name: Annotated[str | None, Field(default=None, examples=["users:5:60"])]
 
