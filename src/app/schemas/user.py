@@ -44,11 +44,8 @@ class UserUpdate(UpdatedTimestamp):
 
 
 class UserUpdateInternal(UserUpdate):
-    updated_at: datetime
+    ...
 
 
 class UserDelete(DeletedTimestamp):
     model_config = ConfigDict(extra="forbid")
-
-    is_deleted: bool
-    deleted_at: datetime

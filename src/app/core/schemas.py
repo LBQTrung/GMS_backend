@@ -1,5 +1,5 @@
 import uuid as uuid_pkg
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timezone
 from typing import Any
 
 from pydantic import BaseModel, Field, field_serializer
@@ -13,8 +13,8 @@ class HealthCheck(BaseModel):
 
 # -------------- mixins --------------
 class CreatedTimestamp(BaseModel):
-    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC).replace(tzinfo=None))
-    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC).replace(tzinfo=None))
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     @field_serializer("created_at")
     def serialize_dt(self, created_at: datetime | None, _info: Any) -> str | None:
@@ -52,6 +52,24 @@ class DeletedTimestamp(BaseModel):
             return deleted_at.isoformat()
 
         return None
+
+class UserCreateBy(BaseModel):
+    created_by: int
+    updated_by: int
+
+
+class UserUpdatedBy(BaseModel):
+    updated_by: int
+
+
+class UserDeletedBy(BaseModel):
+    deleted_by: int
+
+    # Todo: Update delete by
+    @field_serializer("deleted_by")
+    def serialize_dates(self, deleted_at: datetime | None, _info: Any) -> str | None:
+        ...
+
 
 # -------------- token --------------
 class Token(BaseModel):

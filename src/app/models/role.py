@@ -6,7 +6,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 from ..core.db.database import Base
 
 class Role(Base):
-    __tablename__ = "user_role"
+    __tablename__ = "role"
 
     id: Mapped[int] = mapped_column("id", autoincrement=True, nullable=False, unique=True, primary_key=True, init=False)
     name: Mapped[int] = mapped_column(String(30))
