@@ -1,6 +1,6 @@
 from datetime import UTC, datetime
 
-from sqlalchemy import DateTime, ForeignKey, String, Integer
+from sqlalchemy import DateTime, ForeignKey, String, Integer, Date
 from sqlalchemy.orm import Mapped, mapped_column
 
 from ..core.db.database import Base
@@ -29,6 +29,7 @@ class User(Base):
     username: Mapped[str] = mapped_column(String(20), unique=True, index=True)
     email: Mapped[str] = mapped_column(String(50), unique=True, index=True)
     phone: Mapped[str] = mapped_column(String(10), nullable=True, default=None)
+    date_of_birth: Mapped[datetime] = mapped_column(Date, nullable=True, default=None)
     hashed_password: Mapped[str] = mapped_column(String, nullable=False, default="trungdeptrai")
 
     profile_image_url: Mapped[str] = mapped_column(String, default="https://profileimageurl.com")

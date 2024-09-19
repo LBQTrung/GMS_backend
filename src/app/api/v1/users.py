@@ -14,7 +14,7 @@ from ...core.helper import remove_duplicates
 from ...crud.crud_users import crud_users
 from ...crud.crud_roles import crud_roles
 from ...crud.crud_user_role import crud_user_role
-from ...schemas.user import UserCreate, UserCreateInternal, UserRead, UserUpdate, UserReadSub
+from ...schemas.user import UserCreate, UserCreateInternal, UserRead, UserUpdate, UserUpdateInternal, UserReadSub
 from ...schemas.user_role import UserRoleCreateInternal, UserRoleRead
 from ...schemas.role import RoleRead
 
@@ -24,11 +24,12 @@ from ...models.role import Role
 
 
 router = APIRouter(tags=["users"])
-
+db_dependency = Annotated[AsyncSession, Depends(async_get_db)]
+current_user_dependency = Annotated[UserRead, Depends(get_current_user)]
 
 @router.post("/user", status_code=201)
 async def write_user(
-    request: Request, user: UserCreate, current_user: Annotated[UserRead, Depends(get_current_user)], db: Annotated[AsyncSession, Depends(async_get_db)]
+    request: Request, user: UserCreate, current_user: current_user_dependency, db: db_dependency
 ) -> UserReadSub:
     # Query validate
     email_row = await crud_users.exists(db=db, email=user.email)
@@ -73,23 +74,68 @@ async def write_user(
         print(UserReadSub(**user_with_roles_internal_dict))
         return UserReadSub(**user_with_roles_internal_dict)
     except Exception as e:
-        print(e)
         await db.rollback()
-        return {"status": "failed"}
+        return {"error": e.__repr__}
 
-# PaginatedListResponse[UserReadSub]
+
 @router.get("/users")
 async def read_users(
     request: Request, db: Annotated[AsyncSession, Depends(async_get_db)], page: int = 1, items_per_page: int = 10
 ) -> PaginatedListResponse[UserReadSub]:
-    users_data = await crud_users.get_multi(
-        db=db,
-        offset=compute_offset(page, items_per_page),
-        limit=items_per_page,
-        schema_to_select=UserRead,
-        is_deleted=False,
-    )
+    users = await get_joined_users(db)
+    response: dict[str, Any] = paginated_response(crud_data=users, page=page, items_per_page=items_per_page)
+    return response
 
+
+@router.get("/users/me")
+async def read_users_me(request: Request, current_user: current_user_dependency, db: db_dependency) -> UserReadSub:
+    user = await get_joined_users(db, get_one=True, id=current_user["id"])
+    return user
+
+
+@router.get("/users/{id}")
+async def read_user(
+    request: Request, current_user: current_user_dependency, db: db_dependency,
+    id: int
+):
+    user = await get_joined_users(db=db, get_one=True, id=id)
+    if not user:
+        raise NotFoundException("User not found")
+    return user
+
+
+@router.patch("/users/{id}")
+async def update_user(
+    request: Request, current_user: current_user_dependency, db: db_dependency,
+    id: int, values: UserUpdate
+):
+    user_exist = await crud_users.exists(db=db, id=id, is_deleted=False)
+    if not user_exist:
+        raise NotFoundException("User not found")
+    
+    user_internal_dict = values.model_dump(exclude_unset=True)
+    user_internal_dict["updated_by"] = current_user["id"]
+
+    await crud_users.update(db=db, object=UserUpdateInternal(**user_internal_dict), id=id)
+
+    return {"status": "Update successfully"}
+
+
+@router.delete("/users/{id}")
+async def delete_user(
+    request: Request, current_user: current_user_dependency, db: db_dependency,
+    id: int
+) -> dict[str, str]:
+    user_exist = await crud_users.exists(db=db, id=id, is_deleted=False)
+    if not user_exist:
+        raise NotFoundException("User not found")
+
+    await crud_users.delete(db=db, id=id, is_deleted=False)
+    return {"message": "Delete Successfully"}
+
+
+# ============= Local Helper =============
+async def get_joined_users(db, get_one=False,**kwags):
     users = await crud_users.get_multi_joined(
         db=db,
         is_deleted=False,
@@ -114,50 +160,15 @@ async def read_users(
                 relationship_type="one-to-many",
             ),
         ],
+        **kwags
     )
+
     for user in users["data"]:
-         user.roles = remove_duplicates(user.roles)
-    response: dict[str, Any] = paginated_response(crud_data=users, page=page, items_per_page=items_per_page)
-    return response
+        user.roles = remove_duplicates(user.roles)
 
+    if (get_one):
+        if not users["data"]:
+            return None
+        return users["data"][0]
 
-@router.get("/user/me/", response_model=UserRead)
-async def read_users_me(request: Request, current_user: Annotated[UserRead, Depends(get_current_user)]) -> UserRead:
-    return current_user
-
-
-@router.delete("/user/{username}")
-async def erase_user(
-    request: Request,
-    username: str,
-    current_user: Annotated[UserRead, Depends(get_current_user)],
-    db: Annotated[AsyncSession, Depends(async_get_db)],
-    token: str = Depends(oauth2_scheme),
-) -> dict[str, str]:
-    db_user = await crud_users.get(db=db, schema_to_select=UserRead, username=username)
-    if not db_user:
-        raise NotFoundException("User not found")
-
-    if username != current_user["username"]:
-        raise ForbiddenException()
-
-    await crud_users.delete(db=db, username=username)
-    await blacklist_token(token=token, db=db)
-    return {"message": "User deleted"}
-
-
-@router.delete("/db_user/{username}", dependencies=[Depends(get_current_superuser)])
-async def erase_db_user(
-    request: Request,
-    username: str,
-    db: Annotated[AsyncSession, Depends(async_get_db)],
-    token: str = Depends(oauth2_scheme),
-) -> dict[str, str]:
-    db_user = await crud_users.exists(db=db, username=username)
-    if not db_user:
-        raise NotFoundException("User not found")
-
-    await crud_users.db_delete(db=db, username=username)
-    await blacklist_token(token=token, db=db)
-    return {"message": "User deleted from the database"}
-
+    return users
