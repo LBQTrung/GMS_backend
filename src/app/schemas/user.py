@@ -1,9 +1,10 @@
 from datetime import datetime
 from typing import Annotated
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_serializer
 
-from ..core.schemas import CreatedTimestamp, UpdatedTimestamp, DeletedTimestamp
+from ..core.schemas import CreatedTimestamp, UpdatedTimestamp, DeletedTimestamp, UserCreateBy
+from ..schemas.role import RoleRead
 
 
 class UserBase(BaseModel):
@@ -13,14 +14,19 @@ class UserBase(BaseModel):
     profile_image_url: Annotated[str, Field(default="https://www.profileimageurl.com")]
 
 
-class UserRead(UserBase):
+class UserRead(CreatedTimestamp, UserCreateBy, UserBase):
     id: int
+    
+    
+class UserReadSub(UserRead):
+    roles: list[RoleRead]
 
 
 class UserCreate(CreatedTimestamp, UserBase):
     model_config = ConfigDict(extra="forbid")
 
     password: Annotated[str, Field(pattern=r"^.{8,}|[0-9]+|[A-Z]+|[a-z]+|[^a-zA-Z0-9]+$", examples=["Str1ngst!"])]
+    roles: Annotated[list[int] | None, Field(examples=[1, 2, 3], default=[2])]
 
 
 class UserCreateInternal(UserBase):

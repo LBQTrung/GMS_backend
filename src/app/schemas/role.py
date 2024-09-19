@@ -38,4 +38,4 @@ class RoleUpdateInternal(UserUpdatedBy, RoleBase):
 
 class RoleDelete(DeletedTimestamp):
     model_config = ConfigDict(extra="forbid")
-    ...
+    
