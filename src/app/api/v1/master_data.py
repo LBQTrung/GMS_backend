@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ...api.dependencies import get_current_user
 from ...core.exceptions.http_exceptions import DuplicateValueException, ForbiddenException, NotFoundException
 from ...core.db.database import async_get_db
+from ...core.helper import validate_queries
 from ...models.master_data import MasterData
 
 from ...crud.crud_master_data import crud_master_data
@@ -33,13 +34,31 @@ async def write_role(
     request: Request, current_user: current_user_dependency, db: db_dependency,
     master_data: MasterDataCreate
 ):
-    name_exists = await crud_master_data.exists(db, name=master_data.name, is_deleted=False)
-    if (name_exists):
-        raise DuplicateValueException("Master data name already exists")
+    # name_exists = await crud_master_data.exists(db, name=master_data.name, is_deleted=False)
+    # if (name_exists):
+    #     raise DuplicateValueException("Master data name already exists")
     
-    code_exists = await crud_master_data_types.exists(db, code=master_data.code, is_deleted=False)
-    if not code_exists:
-        raise DuplicateValueException("Master data type code not found")
+    # code_exists = await crud_master_data_types.exists(db, code=master_data.code, is_deleted=False)
+    # if not code_exists:
+    #     raise DuplicateValueException("Master data type code not found")
+    
+    await validate_queries(
+        db=db,
+        validation_list=[
+            {
+                "crud": crud_master_data, 
+                "is_exist": True,
+                "query_conditions": {"name": master_data.name},
+                "error_message": "Master data name already exists"
+            },
+            {
+                "crud": crud_master_data_types, 
+                "is_exist": False,
+                "query_conditions": {"code": master_data.code},
+                "error_message": "Master data type code not found"
+            }
+        ]
+    )
     
     master_data_internal_dict = master_data.model_dump()
     master_data_internal_dict["created_by"] = current_user["id"]
