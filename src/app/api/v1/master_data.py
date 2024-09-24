@@ -34,21 +34,13 @@ async def write_role(
     request: Request, current_user: current_user_dependency, db: db_dependency,
     master_data: MasterDataCreate
 ):
-    # name_exists = await crud_master_data.exists(db, name=master_data.name, is_deleted=False)
-    # if (name_exists):
-    #     raise DuplicateValueException("Master data name already exists")
-    
-    # code_exists = await crud_master_data_types.exists(db, code=master_data.code, is_deleted=False)
-    # if not code_exists:
-    #     raise DuplicateValueException("Master data type code not found")
-    
     await validate_queries(
         db=db,
         validation_list=[
             {
                 "crud": crud_master_data, 
                 "is_exist": True,
-                "query_conditions": {"name": master_data.name},
+                "query_conditions": {"name": master_data.name, "is_deleted": False},
                 "error_message": "Master data name already exists"
             },
             {
@@ -103,9 +95,17 @@ async def read_roles(
     id: int,
     values: MasterDataUpdate
 ):
-    master_data_exists = await crud_master_data.exists(db=db, id=id, is_deleted=False)
-    if not master_data_exists:
-        raise NotFoundException("Master data not found")
+    await validate_queries(
+        db=db,
+        validation_list=[
+            {
+                "crud": crud_master_data, 
+                "is_exist": False,
+                "query_conditions": {"id": id, "is_deleted": False},
+                "error_message": "Master data not found"
+            }
+        ]
+    )
 
     master_data_internal_dict = values.model_dump(exclude_unset=True)
     master_data_internal_dict["updated_by"] = current_user["id"]
@@ -121,9 +121,17 @@ async def read_roles(
     request: Request, current_user: current_user_dependency, db: db_dependency,
     id: int,
 ):
-    master_data_exists = await crud_master_data.exists(db=db, id=id, is_deleted=False)
-    if not master_data_exists:
-        raise NotFoundException("Master data not found")
+    await validate_queries(
+        db=db,
+        validation_list=[
+            {
+                "crud": crud_master_data, 
+                "is_exist": False,
+                "query_conditions": {"id": id, "is_deleted": False},
+                "error_message": "Master data not found"
+            }
+        ]
+    )
 
     await crud_master_data.delete(db=db, id=id,is_deleted=False)
 

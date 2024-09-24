@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ...api.dependencies import get_current_user
 from ...core.exceptions.http_exceptions import DuplicateValueException, ForbiddenException, NotFoundException
 from ...core.db.database import async_get_db
+from ...core.helper import validate_queries
 from ...models.role import Role
 from ...crud.crud_roles import crud_roles
 from ...schemas.role import (
@@ -31,9 +32,17 @@ async def write_role(
     request: Request, current_user: current_user_dependency, db: db_dependency,
     role: RoleCreate
 ):
-    is_exists = await crud_roles.exists(db, name=role.name, is_deleted=False)
-    if (is_exists):
-        raise DuplicateValueException("Role already exists")
+    await validate_queries(
+        db=db,
+        validation_list=[
+            {
+                "crud": crud_roles, 
+                "is_exist": True,
+                "query_conditions": {"name": role.name, "is_deleted": False},
+                "error_message": "Role already exists"
+            }
+        ]
+    )
     
     role_internal_dict = role.model_dump()
     role_internal_dict = RoleCreateInternal(**role_internal_dict)
@@ -79,9 +88,17 @@ async def read_roles(
     id: int,
     values: RoleUpdate
 ):
-    role_exists = await crud_roles.exists(db=db, id=id, is_deleted=False)
-    if not role_exists:
-        raise NotFoundException("Role not found")
+    await validate_queries(
+        db=db,
+        validation_list=[
+            {
+                "crud": crud_roles, 
+                "is_exist": False,
+                "query_conditions": {"id": id, "is_deleted": False},
+                "error_message": "Role not found"
+            }
+        ]
+    )
 
     role_internal_dict = values.model_dump(exclude_unset=True)
     role_internal_dict["updated_by"] = current_user["id"]
@@ -97,9 +114,17 @@ async def read_roles(
     request: Request, current_user: current_user_dependency, db: db_dependency,
     id: int,
 ):
-    role_exists = await crud_roles.exists(db=db, id=id, is_deleted=False)
-    if not role_exists:
-        raise NotFoundException("Role not found")
+    await validate_queries(
+        db=db,
+        validation_list=[
+            {
+                "crud": crud_roles, 
+                "is_exist": False,
+                "query_conditions": {"id": id, "is_deleted": False},
+                "error_message": "Role not found"
+            }
+        ]
+    )
 
     await crud_roles.delete(db=db, id=id,is_deleted=False)
 

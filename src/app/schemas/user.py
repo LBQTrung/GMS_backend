@@ -68,6 +68,8 @@ class UserUpdate(UpdatedTimestamp, UserBase):
         ),
     ]
 
+    # roles: Annotated[list[int] | None, Field(default=None)]
+
 
 class UserUpdateInternal(UserUpdatedBy, UserUpdate):
     ...

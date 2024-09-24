@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ...api.dependencies import get_current_user
 from ...core.exceptions.http_exceptions import DuplicateValueException, ForbiddenException, NotFoundException
 from ...core.db.database import async_get_db
+from ...core.helper import validate_queries
 from ...models.master_data_type import MasterDataType
 from ...crud.crud_master_data_types import crud_master_data_types
 from ...schemas.master_data_type import (
@@ -31,13 +32,31 @@ async def write_role(
     request: Request, current_user: current_user_dependency, db: db_dependency,
     master_data_type: MasterDataTypeCreate
 ):
-    name_exists = await crud_master_data_types.exists(db, name=master_data_type.name, is_deleted=False)
-    if (name_exists):
-        raise DuplicateValueException("Master data type name already exists")
+    # name_exists = await crud_master_data_types.exists(db, name=master_data_type.name, is_deleted=False)
+    # if (name_exists):
+    #     raise DuplicateValueException("Master data type name already exists")
     
-    code_exists = await crud_master_data_types.exists(db, code=master_data_type.code, is_deleted=False)
-    if (code_exists):
-        raise DuplicateValueException("Master data type code already exists")
+    # code_exists = await crud_master_data_types.exists(db, code=master_data_type.code, is_deleted=False)
+    # if (code_exists):
+    #     raise DuplicateValueException("Master data type code already exists")
+    
+    await validate_queries(
+        db=db,
+        validation_list=[
+            {
+                "crud": crud_master_data_types, 
+                "is_exist": True,
+                "query_conditions": {"name": master_data_type.name, "is_deleted": False},
+                "error_message": "Master data type name already exists"
+            },
+            {
+                "crud": crud_master_data_types, 
+                "is_exist": True,
+                "query_conditions": {"code": master_data_type.code, "is_deleted": False},
+                "error_message": "Master data type code already exists"
+            }
+        ]
+    )
     
     master_data_type_internal_dict = master_data_type.model_dump()
     master_data_type_internal_dict["created_by"] = current_user["id"]
@@ -83,9 +102,17 @@ async def read_roles(
     id: int,
     values: MasterDataTypeUpdate
 ):
-    master_data_type_exists = await crud_master_data_types.exists(db=db, id=id, is_deleted=False)
-    if not master_data_type_exists:
-        raise NotFoundException("Master data type not found")
+    await validate_queries(
+        db=db,
+        validation_list=[
+            {
+                "crud": crud_master_data_types, 
+                "is_exist": False,
+                "query_conditions": {"id": id, "is_deleted": False},
+                "error_message": "Master data type not found"
+            }
+        ]
+    )
 
     master_data_type_internal_dict = values.model_dump(exclude_unset=True)
     master_data_type_internal_dict["updated_by"] = current_user["id"]
@@ -101,9 +128,17 @@ async def read_roles(
     request: Request, current_user: current_user_dependency, db: db_dependency,
     id: int,
 ):
-    master_data_type_exists = await crud_master_data_types.exists(db=db, id=id, is_deleted=False)
-    if not master_data_type_exists:
-        raise NotFoundException("Master data type not found")
+    await validate_queries(
+        db=db,
+        validation_list=[
+            {
+                "crud": crud_master_data_types, 
+                "is_exist": False,
+                "query_conditions": {"id": id, "is_deleted": False},
+                "error_message": "Master data type not found"
+            }
+        ]
+    )
 
     await crud_master_data_types.delete(db=db, id=id,is_deleted=False)
 
